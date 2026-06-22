@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fantasy Shop - Tienda de Mundos Épicos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { background: linear-gradient(135deg, #1a0033 0%, #0a1428 100%); font-family: system-ui, sans-serif; }
+        .card { transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgb(139 92 246 / 0.3); }
+        .glow-purple { text-shadow: 0 0 15px rgb(167 139 250); }
+    </style>
+</head>
+<body class="min-h-screen text-white">
+    <!-- Navbar -->
+    <nav class="bg-black/80 backdrop-blur fixed w-full z-50 border-b border-purple-900">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-dragon text-4xl text-purple-400"></i>
+                <h1 class="text-3xl font-bold glow-purple">Fantasy Shop</h1>
+            </div>
+            <div class="flex-1 max-w-xl mx-8">
+                <input id="searchInput" type="text" 
+                       class="w-full bg-zinc-900 border border-purple-700 focus:border-purple-500 rounded-full px-6 py-3 text-white placeholder-zinc-400 focus:outline-none"
+                       placeholder="Buscar productos... (Geralt, silla, auriculares)">
+            </div>
+            <button onclick="toggleCart()" class="flex items-center gap-2 text-xl hover:text-purple-400 transition">
+                <i class="fas fa-shopping-cart"></i>
+                <span id="cartCount" class="bg-red-500 text-xs px-2 py-1 rounded-full">0</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="pt-28 pb-12 max-w-7xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <h2 class="text-5xl font-bold mb-4 glow-purple">Bienvenido a tu Reino de Fantasía</h2>
+            <p class="text-xl text-purple-200">Productos épicos de los mejores mundos</p>
+        </div>
+
+        <div id="productosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Productos se cargan aquí -->
+        </div>
+    </div>
+
+    <!-- Carrito -->
+    <div id="cartModal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
+        <div class="bg-zinc-900 rounded-3xl w-full max-w-md mx-4">
+            <div class="p-6 border-b border-purple-800 flex justify-between items-center">
+                <h3 class="text-2xl font-bold">Tu Carrito</h3>
+                <button onclick="toggleCart()" class="text-4xl leading-none hover:text-red-400">×</button>
+            </div>
+            <div id="cartItems" class="p-6 max-h-[400px] overflow-auto"></div>
+            <div class="p-6 border-t border-purple-800">
+                <div class="flex justify-between text-xl mb-6">
+                    <span>Total:</span>
+                    <span id="cartTotal" class="font-bold text-purple-400">$0</span>
+                </div>
+                <button onclick="pagar()" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 py-4 rounded-2xl text-xl font-bold">
+                    PAGAR Y CONQUISTAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let productos = [
+            {id:1, nombre:"Funko Pop Geralt de Rivia", descripcion:"El brujo de The Witcher", precio:29.99, categoria:"Funko Pop", imagen:"https://picsum.photos/id/1015/300/300", stock:45},
+            {id:2, nombre:"Silla Gamer RGB Throne", descripcion:"Silla ergonómica con luces RGB", precio:299.99, categoria:"Sillas Gamer", imagen:"https://picsum.photos/id/201/300/300", stock:12},
+            {id:3, nombre:"Auriculares Gamer Vortex", descripcion:"Sonido 7.1 + micrófono", precio:79.99, categoria:"Auriculares", imagen:"https://picsum.photos/id/301/300/300", stock:38},
+            {id:4, nombre:"Poster Elden Ring", descripcion:"Impresión premium 60x90cm", precio:19.99, categoria:"Posters", imagen:"https://picsum.photos/id/401/300/300", stock:67}
+        ];
+
+        let carrito = [];
+
+        function renderProductos(filtrados = productos) {
+            const grid = document.getElementById('productosGrid');
+            grid.innerHTML = '';
+            filtrados.forEach(p => {
+                grid.innerHTML += `
+                    <div class="card bg-zinc-900 rounded-3xl overflow-hidden border border-purple-800">
+                        <img src="${p.imagen}" class="w-full h-64 object-cover">
+                        <div class="p-6">
+                            <span class="text-purple-400 text-sm">${p.categoria}</span>
+                            <h3 class="font-bold text-xl mt-1">${p.nombre}</h3>
+                            <p class="text-zinc-400 text-sm mt-2 line-clamp-2">${p.descripcion}</p>
+                            <div class="flex justify-between items-end mt-4">
+                                <span class="text-3xl font-bold">$${p.precio}</span>
+                                <button onclick="agregarAlCarrito(${p.id})" 
+                                        class="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-2xl transition">
+                                    Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function agregarAlCarrito(id) {
+            const producto = productos.find(p => p.id === id);
+            const existente = carrito.find(item => item.id === id);
+            if (existente) {
+                existente.cantidad++;
+            } else {
+                carrito.push({...producto, cantidad: 1});
+            }
+            actualizarCarrito();
+        }
+
+        function actualizarCarrito() {
+            document.getElementById('cartCount').textContent = carrito.reduce((a, i) => a + i.cantidad, 0);
+        }
+
+        function toggleCart() {
+            document.getElementById('cartModal').classList.toggle('hidden');
+        }
+
+        function pagar() {
+            if (carrito.length === 0) return;
+            alert("¡Gracias por tu compra, aventurero! Tu pedido ha sido enviado a los reinos de la fantasía.");
+            carrito = [];
+            actualizarCarrito();
+            toggleCart();
+        }
+
+        // Buscador
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const termino = e.target.value.toLowerCase();
+            const filtrados = productos.filter(p => 
+                p.nombre.toLowerCase().includes(termino) || 
+                p.descripcion.toLowerCase().includes(termino) ||
+                p.categoria.toLowerCase().includes(termino)
+            );
+            renderProductos(filtrados);
+        });
+
+        window.onload = () => renderProductos();
+    </script>
+</body>
+</html>
